@@ -38,6 +38,15 @@ func SearchAnimeEnhanced(name string, source string) (*models.Anime, error) {
 		t := scraper.FlixHQType
 		scraperType = &t
 		util.Debug("Searching specific source", "source", "FlixHQ")
+	} else if strings.ToLower(source) == "goyabu" {
+		t := scraper.GoyabuType
+		scraperType = &t
+		util.Debug("Searching specific source", "source", "Goyabu")
+	} else if strings.ToLower(source) == "ptbr" || strings.ToLower(source) == "pt-br" {
+		// Search all PT-BR sources (AnimeFire + Goyabu)
+		t := scraper.AnimefireType
+		scraperType = &t
+		util.Debug("Searching PT-BR sources")
 	} else {
 		// Default behavior: search all sources simultaneously (including FlixHQ)
 		scraperType = nil
@@ -66,6 +75,8 @@ func SearchAnimeEnhanced(name string, source string) (*models.Anime, error) {
 				anime.Source = "Animefire.io"
 			} else if strings.Contains(anime.URL, "animesdrive") {
 				anime.Source = "AnimeDrive"
+			} else if strings.Contains(anime.URL, "goyabu") {
+				anime.Source = "Goyabu"
 			} else if strings.Contains(anime.URL, "flixhq") {
 				anime.Source = "FlixHQ"
 			}
@@ -184,16 +195,21 @@ func GetAnimeEpisodesEnhanced(anime *models.Anime) ([]models.Episode, error) {
 		sourceName = "Animefire.io"
 	} else if anime.Source == "AnimeDrive" {
 		sourceName = "AnimeDrive"
+	} else if anime.Source == "Goyabu" {
+		sourceName = "Goyabu"
 	} else if strings.Contains(anime.Name, "[English]") {
 		// Priority 2: Check language tags (AllAnime = English)
 		sourceName = "AllAnime"
 		anime.Source = "AllAnime" // Update source field
-	} else if strings.Contains(anime.Name, "[Portuguese]") || strings.Contains(anime.Name, "[Português]") {
+	} else if strings.Contains(anime.Name, "[PT-BR]") || strings.Contains(anime.Name, "[Português]") {
 		// AnimeFire or AnimeDrive = Portuguese
 		// Check URL to determine which one
 		if strings.Contains(anime.URL, "animesdrive") {
 			sourceName = "AnimeDrive"
 			anime.Source = "AnimeDrive"
+		} else if strings.Contains(anime.URL, "goyabu") {
+			sourceName = "Goyabu"
+			anime.Source = "Goyabu"
 		} else {
 			sourceName = "Animefire.io"
 			anime.Source = "Animefire.io"
@@ -216,7 +232,7 @@ func GetAnimeEpisodesEnhanced(anime *models.Anime) ([]models.Episode, error) {
 		anime.Source = "AllAnime"
 	}
 
-	cleanName := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(anime.Name, "[English]", ""), "[Portuguese]", ""))
+	cleanName := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(anime.Name, "[English]", ""), "[PT-BR]", ""))
 
 	util.Debug("Getting episodes", "source", sourceName, "anime", cleanName)
 
@@ -249,8 +265,24 @@ func GetAnimeEpisodesEnhanced(anime *models.Anime) ([]models.Episode, error) {
 			return nil, fmt.Errorf("failed to get AnimeDrive scraper: %w", scErr)
 		}
 		episodes, err = scraperInstance.GetAnimeEpisodes(anime.URL)
+	} else if sourceName == "Animefire.io" {
+		// For AnimeFire, use the scraper directly
+		scraperManager := scraper.NewScraperManager()
+		scraperInstance, scErr := scraperManager.GetScraper(scraper.AnimefireType)
+		if scErr != nil {
+			return nil, fmt.Errorf("failed to get AnimeFire scraper: %w", scErr)
+		}
+		episodes, err = scraperInstance.GetAnimeEpisodes(anime.URL)
+	} else if sourceName == "Goyabu" {
+		// For Goyabu, use the scraper directly
+		scraperManager := scraper.NewScraperManager()
+		scraperInstance, scErr := scraperManager.GetScraper(scraper.GoyabuType)
+		if scErr != nil {
+			return nil, fmt.Errorf("failed to get Goyabu scraper: %w", scErr)
+		}
+		episodes, err = scraperInstance.GetAnimeEpisodes(anime.URL)
 	} else {
-		// For AnimeFire and others, use the original API function
+		// For others, use the original API function
 		episodes, err = GetAnimeEpisodes(anime.URL)
 	}
 
@@ -300,16 +332,22 @@ func GetEpisodeStreamURL(episode *models.Episode, anime *models.Anime, quality s
 	} else if anime.Source == "AnimeDrive" {
 		scraperType = scraper.AnimeDriveType
 		sourceName = "AnimeDrive"
+	} else if anime.Source == "Goyabu" {
+		scraperType = scraper.GoyabuType
+		sourceName = "Goyabu"
 	} else if strings.Contains(anime.Name, "[English]") {
 		// Priority 2: Check language tags (AllAnime = English)
 		scraperType = scraper.AllAnimeType
 		sourceName = "AllAnime"
-	} else if strings.Contains(anime.Name, "[Portuguese]") || strings.Contains(anime.Name, "[Português]") {
-		// AnimeFire or AnimeDrive = Portuguese
+	} else if strings.Contains(anime.Name, "[PT-BR]") || strings.Contains(anime.Name, "[Português]") {
+		// AnimeFire, Goyabu, or AnimeDrive = Portuguese
 		// Check URL to determine which one
 		if strings.Contains(anime.URL, "animesdrive") {
 			scraperType = scraper.AnimeDriveType
 			sourceName = "AnimeDrive"
+		} else if strings.Contains(anime.URL, "goyabu") {
+			scraperType = scraper.GoyabuType
+			sourceName = "Goyabu"
 		} else {
 			scraperType = scraper.AnimefireType
 			sourceName = "Animefire.io"
@@ -326,6 +364,10 @@ func GetEpisodeStreamURL(episode *models.Episode, anime *models.Anime, quality s
 		// Priority 5: URL analysis for AnimeDrive
 		scraperType = scraper.AnimeDriveType
 		sourceName = "AnimeDrive"
+	} else if strings.Contains(anime.URL, "goyabu") {
+		// Priority 5b: URL analysis for Goyabu
+		scraperType = scraper.GoyabuType
+		sourceName = "Goyabu"
 	} else if strings.Contains(anime.URL, "allanime") {
 		// Priority 6: AllAnime full URLs
 		scraperType = scraper.AllAnimeType
@@ -364,6 +406,9 @@ func GetEpisodeStreamURL(episode *models.Episode, anime *models.Anime, quality s
 		streamURL, _, streamErr = scraperInstance.GetStreamURL(anime.URL, episode.Number, quality)
 	case scraper.AnimeDriveType:
 		util.Debug("Processing through AnimeDrive")
+		streamURL, _, streamErr = scraperInstance.GetStreamURL(episode.URL)
+	case scraper.GoyabuType:
+		util.Debug("Processing through Goyabu")
 		streamURL, _, streamErr = scraperInstance.GetStreamURL(episode.URL)
 	default:
 		util.Debug("Processing through Animefire.io")
@@ -453,8 +498,10 @@ func DownloadEpisodeRangeEnhanced(anime *models.Anime, startEp, endEp int, quali
 func sanitizeFilename(name string) string {
 	// Remove language tags
 	name = strings.ReplaceAll(name, "[English]", "")
-	name = strings.ReplaceAll(name, "[Portuguese]", "")
+	name = strings.ReplaceAll(name, "[PT-BR]", "")
 	name = strings.ReplaceAll(name, "[Português]", "")
+	name = strings.ReplaceAll(name, "(Legendado)", "")
+	name = strings.ReplaceAll(name, "(Dublado)", "")
 	name = strings.TrimSpace(name)
 
 	// Replace invalid characters
