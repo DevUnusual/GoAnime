@@ -401,7 +401,7 @@ func mpvSendCommand(socketPath string, command []any) (any, error) {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
-			fmt.Println("error closing mpv socket")
+			util.Warnf("error closing mpv socket: %v", err)
 		}
 	}(conn)
 

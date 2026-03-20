@@ -58,6 +58,76 @@ func GetLogDir() string {
 	}
 }
 
+const (
+	logMaxAge   = 7 * 24 * time.Hour // Remove logs older than 7 days
+	logMaxFiles = 20                  // Keep at most 20 log files
+)
+
+// cleanOldLogs removes log files older than maxAge and keeps at most maxFiles.
+func cleanOldLogs(logDir string) {
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return
+	}
+
+	type logEntry struct {
+		name    string
+		modTime time.Time
+	}
+
+	var logs []logEntry
+	now := time.Now()
+
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".log" {
+			continue
+		}
+		// Only consider goanime_*.log files
+		if len(e.Name()) < 8 || e.Name()[:8] != "goanime_" {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		logs = append(logs, logEntry{name: e.Name(), modTime: info.ModTime()})
+	}
+
+	// Remove files older than maxAge
+	var kept []logEntry
+	removed := 0
+	for _, l := range logs {
+		if now.Sub(l.modTime) > logMaxAge {
+			_ = os.Remove(filepath.Join(logDir, l.name))
+			removed++
+		} else {
+			kept = append(kept, l)
+		}
+	}
+
+	// If still over maxFiles, remove oldest
+	if len(kept) > logMaxFiles {
+		// Sort by modTime ascending (oldest first)
+		for i := range kept {
+			for j := i + 1; j < len(kept); j++ {
+				if kept[j].modTime.Before(kept[i].modTime) {
+					kept[i], kept[j] = kept[j], kept[i]
+				}
+			}
+		}
+		excess := len(kept) - logMaxFiles
+		for i := range excess {
+			_ = os.Remove(filepath.Join(logDir, kept[i].name))
+			removed++
+		}
+	}
+
+	if removed > 0 {
+		// Can't use our own logger here (not initialized yet), write to stderr
+		fmt.Fprintf(os.Stderr, "[GoAnime] Cleaned %d old log file(s)\n", removed)
+	}
+}
+
 // initFileLogger creates the log file and initializes the file-only logger.
 // Each run creates a unique log file (date + time) so logs are never overwritten or mixed.
 // Returns the file handle (caller must close) or nil on error.
@@ -67,6 +137,9 @@ func initFileLogger() *os.File {
 		fmt.Fprintf(os.Stderr, "Warning: could not create log directory %s: %v\n", logDir, err)
 		return nil
 	}
+
+	// Clean old log files before creating a new one
+	cleanOldLogs(logDir)
 
 	// Each session gets a unique file: goanime_2026-02-27_15-44-10.log
 	// This ensures multiple runs per day never collide or mix logs
@@ -263,11 +336,12 @@ func Error(msg any, keyvals ...any) {
 	}
 }
 
-// Fatal logs a fatal message and exits
+// Deprecated: Fatal kills the process. Use Error + return error instead.
+// This function remains only for backward compatibility and will be removed.
 func Fatal(msg any, keyvals ...any) {
 	if Logger != nil {
 		formatted := fmt.Sprintf("%v", msg)
-		writeToFile(log.FatalLevel, formatted, keyvals...)
+		writeToFile(log.ErrorLevel, formatted, keyvals...)
 		CloseLogFile() // ensure file is flushed before exit
 		Logger.Fatal(formatted, keyvals...)
 	}

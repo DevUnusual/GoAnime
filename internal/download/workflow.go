@@ -4,7 +4,6 @@ package download
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/alvarorichard/Goanime/internal/api"
@@ -428,7 +427,7 @@ func ExampleMovieDownload() {
 	}
 
 	if err := HandleMovieDownloadRequest(request); err != nil {
-		log.Printf("Movie download failed: %v", err)
+		util.Errorf("Movie download failed: %v", err)
 	}
 }
 
@@ -445,7 +444,7 @@ func ExampleTVDownload() {
 	}
 
 	if err := HandleMovieDownloadRequest(request); err != nil {
-		log.Printf("TV download failed: %v", err)
+		util.Errorf("TV download failed: %v", err)
 	}
 }
 
@@ -464,6 +463,6 @@ func ExampleTVRangeDownload() {
 	}
 
 	if err := HandleMovieDownloadRequest(request); err != nil {
-		log.Printf("TV range download failed: %v", err)
+		util.Errorf("TV range download failed: %v", err)
 	}
 }

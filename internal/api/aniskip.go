@@ -28,7 +28,7 @@ func GetAniSkipData(animeMalId int, episode int) (string, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Println("Error closing response body:", err)
+			util.Warnf("Error closing response body: %v", err)
 		}
 	}(resp.Body)
 

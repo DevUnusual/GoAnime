@@ -309,9 +309,8 @@ func (d *EpisodeDownloader) downloadMultipleWithProgress(episodeNums []int, epis
 	}
 
 	if len(errors) > 0 {
-		fmt.Printf("Some downloads failed:\n")
 		for _, err := range errors {
-			fmt.Printf("  - %v\n", err)
+			util.Errorf("Download failed: %v", err)
 		}
 		return fmt.Errorf("%d download(s) failed", len(errors))
 	}
@@ -503,7 +502,7 @@ func (d *EpisodeDownloader) getContentLength(url string) (int64, error) {
 	req, err := http.NewRequest("HEAD", url, nil)
 	if err != nil {
 		if isAllAnimeURL {
-			fmt.Printf("HEAD request failed for AllAnime URL, using estimate: %v\n", err)
+			util.Warnf("HEAD request failed for AllAnime URL, using estimate: %v", err)
 			return 300 * 1024 * 1024, nil // 300MB default for AllAnime
 		}
 		return 0, err
@@ -517,7 +516,7 @@ func (d *EpisodeDownloader) getContentLength(url string) (int64, error) {
 	resp, err := httpClient.Do(req) // #nosec G704
 	if err != nil {
 		if isAllAnimeURL {
-			fmt.Printf("HEAD request failed for AllAnime URL, using estimate: %v\n", err)
+			util.Warnf("HEAD request failed for AllAnime URL, using estimate: %v", err)
 			return 300 * 1024 * 1024, nil // 300MB default for AllAnime
 		}
 		return 0, err
@@ -532,7 +531,7 @@ func (d *EpisodeDownloader) getContentLength(url string) (int64, error) {
 	if contentLength == "" {
 		// For AllAnime URLs that might not have Content-Length, use fallback
 		if isAllAnimeURL {
-			fmt.Println("Content-Length header missing for AllAnime URL, using fallback estimate")
+			util.Warn("Content-Length header missing for AllAnime URL, using fallback estimate")
 			return d.estimateContentLengthForAllAnime(url, httpClient)
 		}
 		return 0, fmt.Errorf("content-length header missing")
@@ -596,7 +595,7 @@ func (d *EpisodeDownloader) downloadWithProgress(videoURL, episodePath string, e
 	// Get content length for progress tracking
 	contentLength, err := d.getContentLength(videoURL)
 	if err != nil {
-		fmt.Printf("Warning: Failed to get content length: %v, using fallback\n", err)
+		util.Warnf("Failed to get content length: %v, using fallback", err)
 		// Use a reasonable fallback size for progress tracking
 		contentLength = 200 * 1024 * 1024 // 200MB fallback
 	}
@@ -692,7 +691,7 @@ func (d *EpisodeDownloader) downloadEpisodeWithProgress(videoURL, destPath strin
 		fmt.Println("Detected SharePoint URL, trying HTTP download first")
 		err := d.downloadHTTPWithProgress(videoURL, destPath, progressModel, program)
 		if err != nil {
-			fmt.Printf("HTTP download failed: %v, trying yt-dlp fallback\n", err)
+			util.Warnf("HTTP download failed: %v, trying yt-dlp fallback", err)
 			return d.downloadM3U8WithYtDlp(videoURL, destPath, progressModel, program)
 		}
 		return nil

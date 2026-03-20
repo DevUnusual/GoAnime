@@ -1204,7 +1204,7 @@ func skipIntro(socketPath string, episode *models.Episode) {
 func selectAudioTrack(socketPath string) {
 	tracks, err := GetAudioTracks(socketPath)
 	if err != nil {
-		fmt.Printf("Error getting audio tracks: %v\n", err)
+		util.Errorf("Error getting audio tracks: %v", err)
 		return
 	}
 
@@ -1283,7 +1283,7 @@ func selectAudioTrack(socketPath string) {
 	}
 
 	if err := SetAudioTrack(socketPath, selected); err != nil {
-		fmt.Printf("Error setting audio track: %v\n", err)
+		util.Errorf("Error setting audio track: %v", err)
 	} else {
 		fmt.Printf("Audio track changed to %d\n", selected)
 	}
@@ -1293,7 +1293,7 @@ func selectAudioTrack(socketPath string) {
 func selectSubtitleTrack(socketPath string) {
 	tracks, err := GetSubtitleTracks(socketPath)
 	if err != nil {
-		fmt.Printf("Error getting subtitle tracks: %v\n", err)
+		util.Errorf("Error getting subtitle tracks: %v", err)
 		return
 	}
 
@@ -1358,7 +1358,7 @@ func selectSubtitleTrack(socketPath string) {
 		fmt.Println("Subtitles disabled")
 	} else {
 		if err := SetSubtitleTrack(socketPath, selected); err != nil {
-			fmt.Printf("Error setting subtitle track: %v\n", err)
+			util.Errorf("Error setting subtitle track: %v", err)
 		} else {
 			fmt.Printf("Subtitle track changed to %d\n", selected)
 		}

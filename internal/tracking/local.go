@@ -118,12 +118,12 @@ func newLocalTrackerImpl(dbPath string) *LocalTracker {
 	}
 	// Check if CGO is disabled (SQLite not available)
 	if !IsCgoEnabled {
-		fmt.Println("Warning: CGO is disabled, anime progress tracking will be unavailable")
+		log.Println("Warning: CGO is disabled, anime progress tracking will be unavailable")
 		return nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0700); err != nil {
-		fmt.Printf("Error creating data directory: %v\n", err)
+		log.Printf("Error creating data directory: %v", err)
 		return nil
 	}
 	// Build DSN with optimized pragmas for faster operations
@@ -154,7 +154,7 @@ func newLocalTrackerImpl(dbPath string) *LocalTracker {
 
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
-		fmt.Printf("Error opening database: %v\n", err)
+		log.Printf("Error opening database: %v", err)
 		return nil
 	}
 
@@ -164,18 +164,18 @@ func newLocalTrackerImpl(dbPath string) *LocalTracker {
 
 	if err := initializeDatabase(db); err != nil {
 		if closeErr := db.Close(); closeErr != nil {
-			fmt.Printf("Error closing database: %v\n", closeErr)
+			log.Printf("Warning: error closing database: %v", closeErr)
 		}
-		fmt.Printf("Error initializing database: %v\n", err)
+		log.Printf("Error initializing database: %v", err)
 		return nil
 	}
 
 	statements, err := prepareStatements(db)
 	if err != nil {
 		if closeErr := db.Close(); closeErr != nil {
-			fmt.Printf("Error closing database: %v\n", closeErr)
+			log.Printf("Warning: error closing database: %v", closeErr)
 		}
-		fmt.Printf("Error preparing statements: %v\n", err)
+		log.Printf("Error preparing statements: %v", err)
 		return nil
 	}
 
@@ -265,7 +265,7 @@ func migrateOldData(db *sql.DB) {
 		GROUP BY allanime_id
 	`)
 	if err != nil {
-		fmt.Printf("Warning: migration failed: %v\n", err)
+		log.Printf("Warning: migration failed: %v", err)
 		return
 	}
 
@@ -443,7 +443,7 @@ func (t *LocalTracker) GetAllAnime() ([]Anime, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Error closing rows: %v", err)
+			log.Printf("Warning: error closing rows: %v", err)
 		}
 	}()
 
